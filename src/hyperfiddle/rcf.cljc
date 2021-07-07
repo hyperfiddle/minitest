@@ -9,7 +9,9 @@
             [clojure.string :as str]
             [clojure.walk :as walk]
             [hyperfiddle.rcf.reporters]
-            [hyperfiddle.rcf.unify :refer [unifier]]))
+            [hyperfiddle.rcf.unify :refer [unifier]]
+            [hyperfiddle.rcf.queue :as q]
+            ))
 
 ;; "Set this to true if you want to generate clojure.test compatible tests. This
 ;; will define testing functions in your namespace using `deftest`. Defaults to
@@ -210,20 +212,13 @@
   (let [counter (let [x (volatile! 0)] (fn [] (vswap! x inc)))]
     (walk/postwalk #(case % _ (symbol (str "?_" (counter))) %) body)))
 
-(defn rewrite-async [menv symf {:keys [deliver result body] :as expr}]
-  (let [asserts        (filter (comp #{:assert} key) body)
-        current-assert (volatile! 0)
-        proms          (gensym "proms")]
-    `(let [~proms   ~(vec (repeat (count asserts) `(promise)))
-           ~deliver (let [x# (volatile! 0)]
-                      (fn [v#]
-                        (clojure.core/deliver (get ~proms @x#) v#)
-                        (vswap! x# inc)))]
+(defn rewrite-async [menv symf {:keys [deliver result body] :as _expr}]
+  (let [queue (gensym "queue")]
+    `(let [~queue   (q/queue)
+           ~deliver #(q/offer! ~queue %)]
        ~@(walk/postwalk (fn [x]
                          (cond
-                           (= result x) (let [expr `(deref (get ~proms ~(deref current-assert)) *timeout* ::timed-out)]
-                                          (vswap! current-assert inc)
-                                          expr)
+                           (= result x) `(q/poll! ~queue *timeout* ::timeout)
                            :else        x))
                        (rewrite-body* menv symf body)))))
 
