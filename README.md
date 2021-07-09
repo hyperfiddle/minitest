@@ -16,7 +16,7 @@ Tests are run when you send a file or form to your Clojure/Script REPL. In Cursi
 
 ```clojure
 (ns example
-  (:require [hyperfiddle.rcf :refer [tests]]))
+  (:require [hyperfiddle.rcf :refer [tests ! %]]))
 
 (tests
   "equality"
@@ -47,6 +47,61 @@ Tests are run when you send a file or form to your Clojure/Script REPL. In Cursi
 ```text
 Loading src/example.cljc...
 ✅✅✅✅✅✅✅✅Loaded
+```
+
+# Async tests (experimental)
+
+Coming soon
+
+```Clojure
+(ns example
+  (:require [clojure.core.async :refer [chan >! go go-loop <! timeout close!]]
+            [hyperfiddle.rcf :as rcf :refer [tests ! %]]
+            [missionary.core :as m]))
+
+(rcf/set-timeout! 100)
+
+(tests
+  "async tests"
+  #?(:clj  (tests
+             (future
+               (rcf/! 1) (Thread/sleep 10)
+               (rcf/! 2) (Thread/sleep 200)
+               (rcf/! 3))
+             % := 1
+             % := 2
+             % := ::rcf/timeout)
+     :cljs (tests
+             (defn setTimeout [f ms] (js/setTimeout ms f))
+             (rcf/! 1) (setTimeout 10 (fn []
+             (rcf/! 2) (setTimeout 200 (fn []
+             (rcf/! 3)))))
+             % := 1
+             % := 2
+             % := ::rcf/timeout))
+
+  "core.async"
+  (def c (chan))
+  (go-loop [x (<! c)]
+    (when x
+      (<! (timeout 10))
+      (! x)
+      (recur (<! c))))
+  (go (>! c :hello) (>! c :world))
+  % := :hello
+  % := :world
+  (close! c)
+
+  "missionary"
+  (def !x (atom 0))
+  (def dispose ((m/reactor (m/stream! (m/ap (! (inc (m/?< (m/watch !x)))))))
+                (fn [_] #_(prn ::done)) #(prn ::crash %)))
+  % := 1
+  (swap! !x inc)
+  (swap! !x inc)
+  % := 2
+  % := 3
+  (dispose))
 ```
 
 # Configuration
@@ -97,6 +152,6 @@ Sure – you can reach us on clojurians.net in #hyperfiddle or ping @dustingetz.
 
 # Acknowledgments
 
-Thank you to https://github.com/tristefigure for discovery and exploration of various ClojureScript compiler monkey patches that we considered. RCF was not easy to make.
+Thank you to https://github.com/tristefigure for discovery, first implementations, and especially the work on the ClojureScript compiler monkey patches. RCF was not easy to make.
 
 ![Scroll Of Truth meme saying "you do not really understand something until you can explain it as a passing test".](./doc/meme.png)
