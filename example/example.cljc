@@ -1,5 +1,5 @@
 (ns example
-  (:require [hyperfiddle.rcf :refer [tests]]))
+  (:require [hyperfiddle.rcf :refer [tests ! %]]))
 
 (tests
   "equality"
@@ -29,4 +29,36 @@
 
   "inequality"
   1 :<> 2
-  )
+
+  "async tests"
+  (set! rcf/*timeout* 100)
+  (future
+    (rcf/! 1)
+    (Thread/sleep 10)
+    (rcf/! 2)
+    (Thread/sleep 200) ; timeout
+    (rcf/! 3))
+  % := 1
+  % := 2
+  % := 3 ; fail, timeout
+
+  "core.async"
+  (require '[clojure.core.async :refer [chan >! go <! timeout]])
+  (def c (chan))
+  (go (while true (<! (timeout 10)) (! (<! c))))
+  (go (>! c :hello) (>! c :world))
+  % := :hello ; queue
+  % := :world ; queue
+  (close! c) ; dispose when queue is empty
+
+  "missionary"
+  (require '[missionary.core :as m])
+  (def !x (atom 0))
+  (def dispose ((m/reactor (m/stream! (m/ap (! (inc (m/watch !x))))))
+                #(prn :done %) #(prn :fail %)))
+  % := 1
+  (swap! !x inc)
+  (swap! !x inc)
+  % := 2
+  % := 3
+  (dispose))
