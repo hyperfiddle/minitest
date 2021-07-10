@@ -152,6 +152,6 @@ Sure – you can reach us on clojurians.net in #hyperfiddle or ping @dustingetz.
 
 # Acknowledgments
 
-Thank you to https://github.com/tristefigure for discovery, first implementations, and especially the work on the ClojureScript compiler monkey patches. RCF was not easy to make.
+Thank you to https://github.com/tristefigure for discovery, first implementations, and especially exploring various ClojureScript compiler monkey patches that we considered. RCF was not easy to make.
 
 ![Scroll Of Truth meme saying "you do not really understand something until you can explain it as a passing test".](./doc/meme.png)
