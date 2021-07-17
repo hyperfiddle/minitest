@@ -37,10 +37,8 @@ nil
 
 ## With an editor
 
-<video controls>
-    <source src="./videos/getting_started.mp4" type="video/mp4">
-    <p>Your browser doesn’t support HTML5 Videos, but you can <a href="./videos/getting_started.mp4">download the video</a></p>
-</video>
+https://user-images.githubusercontent.com/3972968/126034516-36214002-bdba-468e-9192-fcfa47394ecf.mp4
+
 
 ## Use case
 
